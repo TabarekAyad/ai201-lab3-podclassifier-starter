@@ -41,21 +41,46 @@ def load_labeled_examples() -> list[dict]:
 def build_few_shot_prompt(labeled_examples: list[dict], description: str) -> str:
     """
     Build a few-shot classification prompt using the student's labeled training examples.
-
-    TODO — Milestone 2:
-
-    Your prompt needs to:
-      1. Describe the task and the four valid labels
-      2. Show the labeled training examples so the LLM can learn the pattern
-      3. Present the new description and ask for a classification
-
-    The LLM should return a single label from VALID_LABELS (exactly as written)
-    plus a brief explanation of its reasoning. Think carefully about the output
-    format you request — you'll need to parse it in classify_episode().
-
-    Before writing code, complete specs/classifier-spec.md.
     """
-    return ""
+    task_instruction = (
+        "You are classifying podcast episodes by their structural format.\n"
+        "Assign exactly one of these four labels:\n\n"
+        "- interview: a host speaks with one guest; the guest's knowledge or story drives the episode\n"
+        "- solo: a single host speaking alone from memory, opinion, or experience — no guests\n"
+        "- panel: three or more speakers with roughly equal standing discussing a topic together\n"
+        "- narrative: a story assembled from external sources (reporting, archives, interview clips) with a clear story arc\n\n"
+        "Classify by structure, not topic or tone."
+    )
+
+    example_blocks = []
+    for ex in labeled_examples:
+        example_blocks.append(
+            f"Title: {ex['title']}\n"
+            f"Description: {ex['description']}\n"
+            f"Label: {ex['label']}"
+        )
+    examples_section = "\n\n---\n\n".join(example_blocks)
+
+    new_episode = (
+        f"Title: (not provided)\n"
+        f"Description: {description}\n"
+        f"Label: ?"
+    )
+
+    output_instruction = (
+        "Classify the episode above. Respond in exactly this format:\n\n"
+        "Label: <label>\n"
+        "Reasoning: <one sentence>\n\n"
+        "Use only one of: interview, solo, panel, narrative."
+    )
+
+    parts = [task_instruction]
+    if example_blocks:
+        parts.append("Here are labeled examples:\n\n" + examples_section)
+    parts.append("Now classify this episode:\n\n" + new_episode)
+    parts.append(output_instruction)
+
+    return "\n\n".join(parts)
 
 
 def classify_episode(description: str, labeled_examples: list[dict]) -> dict:
