@@ -183,9 +183,15 @@ Extract the response text from:
 **Step 3 — Parse the response:**
 
 ```
-[blank — how do you extract the label and reasoning from the LLM's text output?
-What string operations or parsing logic do you need?
-This depends on the output format you chose in build_few_shot_prompt.]
+Split response_text on newlines. Iterate over lines:
+  - If a line lowercased starts with "label:", extract the part after the
+    first colon → .strip().lower() → candidate label string.
+  - If a line lowercased starts with "reasoning:", extract the part after
+    the first colon → .strip() → reasoning string.
+
+Use .split(":", 1) so that colons inside the reasoning text don't truncate it.
+If neither line is found, label defaults to "unknown" and reasoning to the
+full raw response (so there's something useful to display).
 ```
 
 ---
@@ -193,8 +199,14 @@ This depends on the output format you chose in build_few_shot_prompt.]
 **Step 4 — Validate the label:**
 
 ```
-[blank — what do you do if the LLM returns a label that isn't in VALID_LABELS?
-What should label be set to?]
+After parsing and normalizing (strip + lower), check:
+  if candidate_label not in VALID_LABELS:
+      label = "unknown"
+  else:
+      label = candidate_label
+
+Do not attempt fuzzy matching or synonym mapping — "unknown" is the correct
+sentinel that tells the caller and the evaluation loop that something went wrong.
 ```
 
 ---
@@ -202,9 +214,13 @@ What should label be set to?]
 **Step 5 — Handle errors gracefully:**
 
 ```
-[blank — what could go wrong? (Network error? Unparseable response?)
-What should the function return if something fails?
-Hint: the evaluation loop runs 20 calls — one bad response shouldn't crash everything.]
+Wrap the entire LLM call + parsing block in try/except Exception as e.
+On any exception (network timeout, API error, malformed response, etc.):
+  return {"label": "unknown", "reasoning": f"Error: {e}"}
+
+This ensures the evaluation loop (which calls classify_episode() 20 times)
+continues through all episodes even if one call fails. The "unknown" label
+will count as a mismatch in compute_accuracy(), which is the honest outcome.
 ```
 
 ---
