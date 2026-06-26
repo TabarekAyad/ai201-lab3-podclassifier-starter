@@ -91,10 +91,26 @@ the format below:" followed by the output format you chose.
 **What output format should you request from the LLM?**
 
 ```
-[blank — you need to parse the response in classify_episode(). What format
-makes parsing reliable? Think about: a single label on its own line?
-A structured format like "Label: X / Reasoning: Y"? JSON?
-What are the tradeoffs?]
+Ask the LLM to respond in exactly this two-line format:
+
+  Label: {label}
+  Reasoning: {one sentence}
+
+Rationale for this choice over alternatives:
+- JSON: reliable when the model cooperates, but LLMs often wrap output in
+  markdown code fences or produce trailing commas, causing json.loads() to
+  raise and giving no partial recovery.
+- Label-only first line: simplest to parse but breaks if the model adds any
+  preamble (e.g. "Sure! The label is...").
+- "Label: X / Reasoning: Y": easy to parse line-by-line, fails gracefully
+  (the label line is still findable even if reasoning is odd), and
+  normalizing to lowercase handles all capitalization variants.
+
+Parsing strategy in classify_episode():
+  1. Split response on newlines.
+  2. Find the line that starts with "label:" (case-insensitive after .lower()).
+  3. Extract everything after the colon, .strip().lower() → candidate label.
+  4. Find the line that starts with "reasoning:" the same way → reasoning text.
 ```
 
 ---
@@ -102,8 +118,16 @@ What are the tradeoffs?]
 **Edge cases to handle in the prompt:**
 
 ```
-[blank — what if labeled_examples is empty? What if the description is very
-short? How does your prompt handle these?]
+- labeled_examples is empty: build_few_shot_prompt() still constructs a
+  valid prompt — the examples section is just absent. The LLM will classify
+  from the task instructions alone (zero-shot). This is acceptable because
+  app.py already guards against calling classify_episode() when
+  labeled_examples is empty and shows a warning to the user instead.
+
+- description is very short (e.g. a title with no body): the prompt still
+  works structurally — less context just means less signal for the LLM.
+  No special handling needed; the model will do its best and may return a
+  lower-confidence reasoning.
 ```
 
 ---
