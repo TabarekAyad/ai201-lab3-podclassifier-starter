@@ -248,29 +248,53 @@ any labels you're unsure about. Annotation quality is part of the lab.
 
 ## Implementation Notes
 
-*Fill this in after implementing and testing both functions.*
-
 **Test: what does the raw LLM response look like for one episode?**
 
 ```
-Episode tested: [title]
-Raw response text: [paste it here]
+Episode tested: The Aral Sea: A Disaster in Four Acts (expected: narrative)
+
+Raw response text:
+Label: narrative
+Reasoning: The episode is described as telling a story in four parts, using a
+structured narrative approach to convey the history and impact of the Aral Sea's
+decline, which is characteristic of the narrative format.
 ```
 
 **How did you parse the label out of the response?**
 
 ```
-[describe the string operations — strip, split, lower, etc.]
+1. Split response_text on newlines to get individual lines.
+2. For each line, call line.lower() to normalize capitalization.
+3. If the lowercased line starts with "label:", use line.split(":", 1)[1]
+   to extract everything after the first colon (the [1] limit prevents
+   splitting on colons that appear inside the reasoning text).
+4. Call .strip().lower() on the extracted value → candidate label string.
+5. Same logic for "reasoning:" → reasoning string.
+
+Example:
+  line  = "Label: narrative"
+  lower = "label: narrative"
+  lower.startswith("label:")  → True
+  line.split(":", 1)[1]       → " narrative"
+  .strip().lower()            → "narrative"
 ```
 
 **Did any episodes return `"unknown"`? If so, why?**
 
 ```
-[yes / no — if yes, what did the raw response look like?]
+No. All four test cases returned a valid label. The model followed the
+"Label: X\nReasoning: Y" format exactly in every response — no preamble,
+no markdown fences, no capitalization variance — so every candidate label
+passed the VALID_LABELS check.
 ```
 
 **One thing about the output format that surprised you:**
 
 ```
-[your answer here]
+The model was more consistent than expected — it never added preamble text
+like "Sure!" or "Here is my classification:" before the Label line, and it
+never wrapped output in markdown code fences. The two-line format held across
+all four label types without a single deviation. The concern about capitalization
+variance (e.g. "Interview" vs "interview") also turned out to be a non-issue
+in practice, though the .lower() normalization is still the right defensive move.
 ```
