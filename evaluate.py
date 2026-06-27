@@ -50,15 +50,11 @@ def run_evaluation() -> dict:
 def compute_accuracy(predictions: list[str], ground_truth: list[str]) -> float:
     """
     Compute overall classification accuracy.
-
-    TODO — Milestone 3:
-
-    Accuracy = number of correct predictions / total predictions.
-    A prediction is correct when it exactly matches the ground truth label.
-
-    Before writing code, complete specs/evaluation-spec.md.
     """
-    return 0.0
+    if not ground_truth:
+        return 0.0
+    correct = sum(p == t for p, t in zip(predictions, ground_truth))
+    return correct / len(ground_truth)
 
 
 def compute_per_class_accuracy(
